@@ -1,5 +1,6 @@
 # Jackling CS Camp Framework
 
+This is a copy of a group project I worked on, I set it up as a website using Ruby and git-pages, alongside creating the UI
 
 ## Add your files
 
