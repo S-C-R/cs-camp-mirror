@@ -1,0 +1,6 @@
+{"demo": {
+	"functionsArray": ["TurnRight()", "TurnLeft()", "Move()", "Shoot()"],
+	"keywordsArray": ["if","for"],
+	"booleanArray": ["isEqual()"],
+	"events": ["collision", "hit", "detect"]}
+}

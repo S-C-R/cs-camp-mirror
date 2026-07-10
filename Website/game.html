@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | Battle Tanks</title>
+	<link rel="icon" type="image/x-icon" href="../image/favicon.ico">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #003B49;
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+        }
+        button {
+				background-color: rgba(0, 0, 0, 0);
+				color: white;
+				border: 0px;
+				height:20px;
+				font-size: 24px;
+				margin: 8px;
+				position: absolute;
+
+			}
+		input {
+			background-color: #848485;
+			color: white;
+			border: 1px #545454;
+			transform: translate(0%, -50%);
+		}
+		input::placeholder {
+			color: white;
+		}
+		#exportCode {
+			button {
+				transform: translate(0%, 150%);
+			}
+		}
+		#inputBox {
+			button {
+				transform: translate(0%, -30%);
+			}
+		}
+
+        #leftPane {
+            background-color: #545454;
+			color: white;
+			font-family: monospace;
+			font-size: 30px;
+			font-weight: bold;
+            width: 50%;
+            padding: 20px;
+            box-sizing: border-box;
+             overflow-y: auto; /* Add scrollbar */
+             scrollbar-color: #007A33 #545454;
+            height: 100vh; /* Full height to enable scrolling */
+			.comment {
+				font-size: 20px;
+			}
+        }
+        #rightPane {
+            width: 50%;
+            height: 100vh;
+            border: none;
+        }
+		.namebox {
+			float: right;
+		}
+        #gameContainer{
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #inputBox {
+            margin-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 70vh;
+			color: white;
+			background-color: #848485;
+			resize: none;
+
+        }
+
+    </style>
+  </head>
+  <body>
+    <div id="leftPane">
+        <div>
+            <p>main() 
+			&#123</p>
+			<p class="comment">#Repeats as long as no other events are running</p>
+            <textarea id="main" rows="30" cols="80" tabindex="0"></textarea>
+            <p>&#125</p>
+        </div>
+    </div>
+    <div id="unity-container" class="unity-desktop">
+		<div id="exportCode">
+            <button onclick="exportCode()">  
+				<img src="../image/export-image.png" alt="Button Image" >
+			</button>
+
+        </div>
+    
+        <div id="inputBox">
+            <button onclick="sendToUnity()">
+                <img src="../image/play-image.png" id ="play" alt="Button Image" >
+                <img src="../image/stop-image.png" id="stop" style="display: none;" alt="Button Image" >
+			</button>
+
+        </div>
+		<div class="namebox">
+			<input id="name" type="text" maxlength="12" placeholder="Enter Name" style="width: 200px; height: 30px; margin:10px;">
+			<input type="color" id="color" name="favcolor" value="#ff0000" style="margin:10px;">
+		</div>
+      <canvas id="unity-canvas" width=960 height=600 tabindex="1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">Battle Tanks
+            <textarea type="text" id="userOutput" rows="5" cols="80" readonly></textarea>
+        </div>
+      </div>
+    </div>
+
+
+    <script defer>
+
+	window.playing =false;
+    window.addEventListener('load', populateEvents);
+    window.addEventListener('load', main);
+
+    var events = ["hit","collision","detect"];
+    let functionsArray;
+    let keywordsArray;
+    let booleanArray;
+    //let events;
+
+    //window.addEventListener('load', main);
+
+    // Assigns correct game functions and calls parser
+    async function main() {
+        let result;
+        // var game = document.getElementById('demo').value;
+        // console.log(game);
+        const data = await getData();
+        //events = data['demo']["events"];
+        console.log(events);
+        functionsArray = data['demo']["functionsArray"];
+        keywordsArray = data['demo']["keywordsArray"];
+        booleanArray = data['demo']["booleanArray"];
+    }
+
+    // Gets game functions
+    async function getData() {
+        const res = await fetch("games.json");
+        const data = await res.json();
+        return data;
+    }
+
+	function sendToUnity() {
+
+	    if(window.playing == false)
+	    {
+            let errSpot = "main";
+            let errMessage = "";
+            document.getElementById("userOutput").innerHTML = errMessage;
+            //console.log("errMessage before: " + errMessage);
+            //main();
+            errMessage = ParseCode(document.getElementById("main").value, "");
+            if (errMessage == "")
+            {
+                for (let i = 0; i < events.length; i++)
+                {
+                    errMessage = ParseCode(document.getElementById(events[i]).value, "");
+                    if (errMessage != "")
+                    {
+                        errSpot = events[i];
+                        break;
+                    }
+                }
+            }
+
+            document.getElementById("userOutput").innerHTML = errMessage;
+            if (errMessage == "")
+            {
+                var message = FormatMessage();
+                console.log(message);
+                window.unityInstance.SendMessage('GameSetup', 'StartGame', message);
+                window.playing = true;
+            }
+            else
+            {
+                document.getElementById("userOutput").innerHTML = "Error found in: " + errSpot + "\n" + errMessage;
+            }
+
+
+        }else
+	        {
+		    window.unityInstance.SendMessage('GameManager', 'EndGame');
+           	window.playing = false;
+	    }
+   }
+   function exportCode()
+    {
+        var filename = "studentcode";
+        var str = "PlaceHolderName,"+ReplaceAll(document.getElementById('main').value,"\n",';' ); // Change Place Holder name once we have ui for name
+        for(let i =0;i<events.length;i++)
+        {
+           str += "," + ReplaceAll(document.getElementById(events[i]).value,"\n",';');
+           
+        }
+        const blob = new Blob([str], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+   function ReplaceAll(str, searchValue, newValue)
+   {
+       while(str.includes(searchValue))
+       {
+           str = str.replace(searchValue,newValue);
+       }
+       return str;
+   }
+   function FormatMessage()
+   {
+       var setupString ="{\"players\":[";
+
+       setupString+=("{\"name\":\"John\",\"main\":\""+ReplaceAll(document.getElementById('main').value,"\n",';')+"\",");//Change John to a variable when possible
+       for(let i =0;i<events.length;i++)
+       {
+           setupString+="\""+events[i]+"\":\""+ReplaceAll(document.getElementById(events[i]).value,"\n",';')+"\"";
+           if(i< (events.length-1))
+           {
+                setupString+=",";
+           }
+       }
+       setupString+="}]}\r\n";
+       return setupString;
+   }
+
+   function populateEvents() {
+            var leftPane = document.getElementById("leftPane");
+
+            events.forEach(function(event) {
+                // Create the container div for each event
+                var eventContainer = document.createElement("div");
+                eventContainer.className = "event-container";
+
+                // Create the opening p tag with the event name
+                var openingP = document.createElement("p");
+                openingP.innerHTML = `${event}() &#123;`;
+
+                // Create the textarea with the id set to the event name
+                var textarea = document.createElement("textarea");
+                textarea.id = event;
+                textarea.rows = 30;
+                textarea.cols = 80;
+
+                // Create the closing p tag
+                var closingP = document.createElement("p");
+                closingP.innerHTML = "&#125;";
+
+                // Append the elements to the container
+                eventContainer.appendChild(openingP);
+                eventContainer.appendChild(textarea);
+                eventContainer.appendChild(closingP);
+
+                // Append the container to leftPane
+                leftPane.appendChild(eventContainer);
+            });
+        }
+    
+
+    </script>
+    <script src="webgl_setup.js"></script>
+    <script src="./parser.js"></script>
+
+	
+  </body>
+</html>

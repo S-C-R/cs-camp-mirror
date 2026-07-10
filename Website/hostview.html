@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | Battle Tanks</title>
+	<link rel="icon" type="image/x-icon" href="../image/favicon.ico">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+			background-color: #003B49;
+        }
+        #leftPane {
+            background-color: #545454;
+			color: white;
+			font-family: monospace;
+			font-size: 30px;
+			font-weight: bold;
+            width: 50%;
+            padding: 20px;
+            box-sizing: border-box;
+			overflow-y: auto; /* Add scrollbar */
+            scrollbar-color: #007A33 #545454;
+            height: 100vh; /* Full height to enable scrolling */
+			.comment {
+				font-size: 20px;
+				width: 400px
+			}
+        }
+		button {
+			background-color: rgba(0, 0, 0, 0);
+			border: 0px;
+		}
+		label {
+			
+		}
+        #rightPane {
+            width: 50%;
+            height: 100vh;
+            border: none;
+        }
+        #gameContainer{
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #inputBox {
+            margin-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 70vh;
+        }
+
+    </style>
+  </head>
+  <body>
+    <div id="leftPane">
+        <div>
+            <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+            <label for="file"><img src="../image/import-image.png" id ="import" alt="Button Image" ></label>
+            <input type="file" id="file" name="file[]" accept="text/plain" multiple hidden>
+            <br><br>
+            </form>
+            <div class="comment" id="fileContents"></div>
+
+        </div>
+        <div id="inputBox">
+          
+            <button onclick="sendToUnity()">
+                <img src="../image/play-image.png" id ="play" alt="Button Image" >
+                <img src="../image/stop-image.png" id="stop" style="display: none;" alt="Button Image" >
+			</button>
+        </div>
+    </div>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600 tabindex="1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">Battle Tanks</div>
+      </div>
+    </div>
+    <script>
+
+	window.playing =false;
+
+    var events = ["hit","collision","detect"];
+    var fileContentsArray =[];
+    function ParseFiles() {
+        return new Promise((resolve, reject) => {
+            const fileInput = document.getElementById('file');
+            const fileContentsDiv = document.getElementById('fileContents');
+            fileContentsDiv.innerHTML = ""; // Clear previous content
+            fileContentsArray = [];
+
+            // Loop through each selected file
+            Array.from(fileInput.files).forEach(file => {
+                const reader = new FileReader();
+
+                // When the file is read, add its content to the array
+                reader.onload = function(event) {
+                    const fileContent = event.target.result;
+                    console.log(fileContent);
+                    fileContentsArray.push(fileContent);
+
+                    // Display the content on the page
+                    const paragraph = document.createElement('p');
+                    paragraph.textContent = `Content of ${file.name}: ${fileContent}`;
+                    fileContentsDiv.appendChild(paragraph);
+
+                    // Resolve the promise when all files have been read
+                    if (fileContentsArray.length === fileInput.files.length) {
+                        resolve(fileContentsArray);
+                    }
+                };
+
+
+
+                // Start reading the file
+                reader.readAsText(file);
+            });
+        });
+    }
+	async function sendToUnity() {
+
+	    if(window.playing == false)
+	    {
+                fileContentsArray = await ParseFiles();
+                if (fileContentsArray.length > 0) {
+                    var str = fileContentsArray[0].split(','); // This should work
+                } else {
+                    console.error("fileContentsArray is empty");
+                    return;
+                }
+                var message = FormatMessage(fileContentsArray);
+            
+
+                console.log(message);
+                console.log(window.unityInstance);
+            	window.unityInstance.SendMessage('GameSetup', 'StartGame', message);
+		        window.playing = true;
+        }else
+	    {
+		    window.unityInstance.SendMessage('GameManager', 'EndGame');
+           	window.playing = false;
+	    }
+   }
+   function ReplaceAll(str, searchValue, newValue)
+   {
+       while(str.includes(searchValue))
+       {
+           str = str.replace(searchValue,newValue);
+       }
+       return str;
+   }
+   //recommoit
+   function FormatMessage(fileContentsArray)
+   {
+       var setupString ="{\"players\":[";
+       for(let j =0;j<fileContentsArray.length;j++)
+       {
+        var playerData = fileContentsArray[j].split(',');
+       setupString+=("{\"name\":\""+playerData[0] +"\",\"main\":\""+playerData[1]+"\",");//Change John to a variable when possible
+           for(let i =0;i< events.length ;i++)
+           {
+               setupString+="\""+events[i]+"\":\""+playerData[(i+2)]+"\"";
+               if(i< (events.length-1))
+               {
+                    setupString+=",";
+               }
+           }
+           setupString+="}";
+           if(j< (fileContentsArray.length-1))
+           {
+                    setupString+=",";
+           }
+       }
+       setupString+="]}\r\n";
+       return setupString;
+   }
+
+
+
+    </script>
+   <script src="webgl_setup.js"></script>
+
+	
+  </body>
+</html>
+
